@@ -9,3 +9,10 @@
 | `본부/미수금 V2.0.html` | 미수금 취합·주간회의 미수채권 자료 단독 도구 |
 
 회사 데이터 원본은 저장소에 넣지 않는다.
+
+## 바로 열기 (웹 화면)
+
+- 본부 주간회의: https://raw.githack.com/LMS-0517/mslee/main/%EB%B3%B8%EB%B6%80/%EC%98%81%EB%82%A8%EC%9E%90%EB%8F%99%20V2.0.html
+- 미수금: https://raw.githack.com/LMS-0517/mslee/main/%EB%B3%B8%EB%B6%80/%EB%AF%B8%EC%88%98%EA%B8%88%20V2.0.html
+
+main에 올린 최신본이 몇 분 안에 반영됩니다(새로고침).
