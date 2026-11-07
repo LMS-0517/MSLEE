@@ -145,7 +145,7 @@ td.cstart{box-shadow:inset 0 0 0 3px #d00 !important;position:relative}
 <div class="card">
   <h2>3. 결과 <span id="stat" class="ok"></span></h2>
   <div class="row" style="margin-bottom:6px;align-items:center">
-    <button id="copyTsv">텍스트(TSV) 복사 (열 위치 그대로)</button>
+    <button id="copyTsv">텍스트(TSV) 복사 (열 위치 그대로)</button><button class="sec" id="copyNew" title="신규업체 현황 표(제목~영남영업본부 행)를 병합·서식 포함 복사">신규업체 표 복사</button>
     <span style="display:inline-flex;gap:8px;align-items:center;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:4px 10px;background:#f7f9fc"><b style="color:var(--navy)">주요업체 선정 기준</b>
       <label>계약 최대 <input type="number" id="capC" value="3" style="width:46px"></label>
       <label>견적 최대 <input type="number" id="capQ" value="4" style="width:46px"></label>
@@ -372,6 +372,16 @@ function buildGrid(){
   R();blank();add('※ 2차 타겟업체 : 영남본부 676업체 파렛트 사용확인 결과 KPP 계약 사용중인 업체와 계약불가(종료, 미사용 등) 업체를 제외한 추가 영업 가능업체를 2차 타겟으로 설정.','txt');fill();
   R();fill();
 
+  /* 신규업체 현황: 위 표와 같은 양식, 구분 '신규' 업체만 (금주 주요업체 위) */G.newStart=G.length;
+  R();blank();add('▶ 농산업종 신규업체 현황','st');blank(2);add(out.week,'c');fill();
+  R();blank();add('부서','h',1,M?2:1);add('신규 추가업체','hn',M?2:1);if(!M)add('','hn');add('주간 실적'+(per?'['+per+']':''),'h2',M?4:1);if(!M)for(let i=0;i<3;i++)add('','h2');
+    add('신규 누계실적','hy rt rl rr',M?4:1);if(!M)for(let i=0;i<3;i++)add('','hy rt'+(i===2?' rr':''));add('방문진행률','h',1,M?2:1);fill();
+  R();blank();if(!M)add('부서','h');add('대상 업체수','hn');add('경쟁사 매출','hn');['방문','견적','계약완료','예상매출'].forEach(h=>add(h,'h2'));['방문','견적','계약완료','예상매출'].forEach((h,i)=>add(h,'hy'+(i===0?' rl':i===3?' rr':'')));if(!M)add('방문진행률','h');fill();
+  const NT={n:0,s:0,v:0,q:0,c:0,am:0,cv:0,cq:0,cc:0,cam:0};
+  REG.forEach(k=>{const o=out.nw[k];Object.keys(NT).forEach(z=>NT[z]+=o[z]);R();blank();add(k,'b c');add(o.n,'b n y');add(o.s,'b n y');[o.v,o.q,o.c,o.am].forEach(x=>add(x,'b n'));
+    add(o.cv,'b n rl');add(o.cq,'b n');add(o.cc,'b n');add(o.cam,'b n rr');add(rateOf(o.cv+o.cq+o.cc,o.n),'b p bd');fill()});
+  R();blank();add('영남영업본부','b c sum');[NT.n,NT.s,NT.v,NT.q,NT.c,NT.am].forEach(x=>add(x,'b n sum'));[NT.cv,NT.cq,NT.cc,NT.cam].forEach((x,i)=>add(x,'b n sum rb'+(i===0?' rl':i===3?' rr':'')));add(rateOf(NT.cv+NT.cq+NT.cc,NT.n),'b p sum');fill();
+  G.newEnd=G.length;R();fill();
   R();blank();add('※ 금주 주요업체','st');fill();
   R();blank();add('팀/지점','hg');add('담당자','hg');add('코드','hg');add('업체명','hg',M?2:1);if(!M)add('','hg');add('진행단계','hg');add('효과금액(年)','hg');add('영업 진행사항','hg',M?9:1);if(!M)for(let i=0;i<8;i++)add('','hg');fill();
   G.majStart=G.length;
@@ -443,6 +453,7 @@ async function copy(html,text){
 async function farmCopy(which){if(!out){alert('먼저 자동 작성을 실행하세요');return}const F=buildGrid();const G=which==='sum'?subGrid(F,F.sumStart,F.sumStart+REG.length,6,10):subGrid(F,F.majStart,F.majEnd);
   const ok=await copy(fullHtml(G),gridToTsv(G));document.getElementById('stat').textContent=ok?(which==='sum'?'주간 실적(방문~예상매출, 권역 3행)':'주요업체')+' 복사됨 ('+G.length+'행) → 엑셀에서 선택한 셀에 붙여넣기':'복사 실패: 미리보기를 드래그해서 복사하세요'}
 document.getElementById('copyTsv').onclick=()=>farmCopy('maj');
+document.getElementById('copyNew').onclick=async()=>{if(!out){alert('먼저 자동 작성을 실행하세요');return}const F=buildGrid();const G=subGrid(F,F.newStart,F.newEnd);const ok=await copy(fullHtml(G),gridToTsv(G));document.getElementById('stat').textContent=ok?'신규업체 현황 표 복사됨 ('+G.length+'행) → 엑셀에서 제목 칸(B열)을 선택하고 붙여넣기':'복사 실패: 미리보기를 드래그해서 복사하세요'};
 (function(){const t=new Date();const th=new Date(t);th.setDate(t.getDate()-((t.getDay()+3)%7));const fr=new Date(th);fr.setDate(th.getDate()-6);const f=d=>String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0');document.getElementById('farm-period').value=f(fr)+'~'+f(th)})();/* 기본: 가장 최근 목요일까지 7일(금~목) */
 document.getElementById('farm-period').addEventListener('change',()=>{if(out)render()});
 /* 붙여넣은 리스트를 그대로 표로 (접이식), 신규 행은 연노랑 */
