@@ -326,7 +326,7 @@ function run(){
   document.getElementById('detect').innerHTML='인식: 데이터 '+recs.length+'행, 헤더 '+(hdrHit>=3?'감지됨':'없음(기본 열 위치 적용)')+' · 열 위치(0부터): 권역 '+c.region+', 지점 '+c.branch+', 담당자 '+c.person+', 코드 '+c.code+', 업체명 '+c.name+', 최종방문 '+c.visit+', 진행단계 '+c.stage+', 예상매출 '+c.amt+', 진행사항 '+c.memo;
   const cur=recs.filter(x=>x.visit===week);
   const wk={},cm={};REG.forEach(r=>{wk[r]={방문:0,견적:0,계약:0,amt:0}});
-  cur.forEach(x=>{if(!x.stage)return;wk[x.region][x.stage]++;if(x.stage=='계약')wk[x.region].amt+=x.amt});
+  cur.filter(x=>!x.isNew).forEach(x=>{if(!x.stage)return;/* 위 2차 타겟 표는 신규 제외 (신규는 아래 신규업체 현황 표) */wk[x.region][x.stage]++;if(x.stage=='계약')wk[x.region].amt+=x.amt});
   REG.forEach(r=>{const p=cfg.cum[r];cm[r]={방문:p[2]+wk[r].방문,견적:p[3]+wk[r].견적,계약:p[4]+wk[r].계약,amt:p[5]+wk[r].amt}});
   const cap={계약:cfg.capC,견적:cfg.capQ,방문:cfg.capV};const major=[];
   ['계약','견적','방문'].forEach(s=>{major.push(...cur.filter(x=>x.stage===s&&x.amt>=cfg.minAmt).sort((a,b)=>b.amt-a.amt).slice(0,cap[s]))});
@@ -337,7 +337,7 @@ function run(){
   const newN=recs.filter(x=>x.isNew).length;
   out={week,major,cur,wk,cm,nw,newN,newCol:c.gubun,compCol:c.comp,range:cfg.range};
   render();farmList(parseTSV(raw),hdr,isNewRow,rows.length,newN);
-  document.getElementById('stat').textContent='작성 완료 ('+week+', 금주 '+cur.length+'건'+(newN?'(신규 '+cur.filter(x=>x.isNew).length+'건 포함)':'')+', 주요업체 '+major.length+'건) · 신규업체 '+newN+'곳'+(c.gubun<0?' (구분 머리글 없음: 행 안의 "신규" 칸으로 판별)':'')+(c.comp<0&&newN?' · 경쟁사 매출 열을 못 찾아 신규 표 경쟁사 매출은 비움':'');
+  document.getElementById('stat').textContent='작성 완료 ('+week+', 금주 '+cur.length+'건'+(newN?'(신규 '+cur.filter(x=>x.isNew).length+'건은 신규업체 표로)':'')+', 주요업체 '+major.length+'건) · 신규업체 '+newN+'곳'+(c.gubun<0?' (구분 머리글 없음: 행 안의 "신규" 칸으로 판별)':'')+(c.comp<0&&newN?' · 경쟁사 매출 열을 못 찾아 신규 표 경쟁사 매출은 비움':'');
 }
 document.getElementById('run').onclick=run;
 document.getElementById('week').onchange=()=>{if(document.getElementById('src').value.trim())run()};
@@ -355,19 +355,19 @@ function buildGrid(){
   const M=cfg.merge==='1',wk=out.wk,cm=out.cm;
   const per=(document.getElementById('farm-period').value||'').trim();
   R();blank();add('▶ 농산업종 2차 타겟 현황','st');blank(2);add(out.week,'c');fill();
-  R();blank();add('부서','h',1,M?2:1);add('2차 타겟업체','h',M?2:1);if(!M)add('','h');add('신규 추가업체','hn',M?2:1);if(!M)add('','hn');
+  R();blank();add('부서','h',1,M?2:1);add('2차 타겟업체','h',M?2:1);if(!M)add('','h');
     add('주간 실적'+(per?'['+per+']':''),'h2',M?4:1);if(!M)for(let i=0;i<3;i++)add('','h2');
     add('2차 타겟 누계실적','hy rt rl rr',M?4:1);if(!M)for(let i=0;i<3;i++)add('','hy rt'+(i===2?' rr':''));
     add('방문진행률','h',1,M?2:1);fill();
-  R();blank();if(!M)add('부서','h');add('대상 업체수','h');add('경쟁사 매출','h');add('대상 업체수','hn');add('경쟁사 매출','hn');['방문','견적','계약완료','예상매출'].forEach(h=>add(h,'h2'));['방문','견적','계약완료','예상매출'].forEach((h,i)=>add(h,'hy'+(i===0?' rl':i===3?' rr':'')));if(!M)add('방문진행률','h');fill();
+  R();blank();if(!M)add('부서','h');add('대상 업체수','h');add('경쟁사 매출','h');['방문','견적','계약완료','예상매출'].forEach(h=>add(h,'h2'));['방문','견적','계약완료','예상매출'].forEach((h,i)=>add(h,'hy'+(i===0?' rl':i===3?' rr':'')));if(!M)add('방문진행률','h');fill();
   G.sumStart=G.length;
-  /* 방문진행률 = (누계 방문+견적+계약완료) ÷ (2차 대상 + 신규 대상), 최대 100% */const rateOf=(a,n)=>n?Math.min(1,a/n):0;
-  const T={n:0,s:0,nn:0,ns:0,v:0,q:0,c:0,am:0,cv:0,cq:0,cc:0,cam:0};
-  REG.forEach(k=>{const p=cfg.cum[k],w=wk[k],c=cm[k],o=out.nw[k];
-    T.n+=p[0];T.s+=p[1];T.nn+=o.n;T.ns+=o.s;T.v+=w.방문;T.q+=w.견적;T.c+=w.계약;T.am+=w.amt;T.cv+=c.방문;T.cq+=c.견적;T.cc+=c.계약;T.cam+=c.amt;
-    R();blank();add(k,'b c');add(p[0],'b n y');add(p[1],'b n y');add(o.n,'b n y');add(o.s,'b n y');add(w.방문,'b n');add(w.견적,'b n');add(w.계약,'b n');add(w.amt,'b n');
-    add(c.방문,'b n rl');add(c.견적,'b n');add(c.계약,'b n');add(c.amt,'b n rr');add(rateOf(c.방문+c.견적+c.계약,p[0]+o.n),'b p bd');fill()});
-  R();blank();add('영남영업본부','b c sum');[T.n,T.s,T.nn,T.ns,T.v,T.q,T.c,T.am].forEach(x=>add(x,'b n sum'));[T.cv,T.cq,T.cc,T.cam].forEach((x,i)=>add(x,'b n sum rb'+(i===0?' rl':i===3?' rr':'')));add(rateOf(T.cv+T.cq+T.cc,T.n+T.nn),'b p sum');fill();
+  /* 방문진행률 = (누계 방문+견적+계약완료) ÷ 대상 업체수, 최대 100% */const rateOf=(a,n)=>n?Math.min(1,a/n):0;
+  const T={n:0,s:0,v:0,q:0,c:0,am:0,cv:0,cq:0,cc:0,cam:0};
+  REG.forEach(k=>{const p=cfg.cum[k],w=wk[k],c=cm[k];
+    T.n+=p[0];T.s+=p[1];T.v+=w.방문;T.q+=w.견적;T.c+=w.계약;T.am+=w.amt;T.cv+=c.방문;T.cq+=c.견적;T.cc+=c.계약;T.cam+=c.amt;
+    R();blank();add(k,'b c');add(p[0],'b n y');add(p[1],'b n y');add(w.방문,'b n');add(w.견적,'b n');add(w.계약,'b n');add(w.amt,'b n');
+    add(c.방문,'b n rl');add(c.견적,'b n');add(c.계약,'b n');add(c.amt,'b n rr');add(rateOf(c.방문+c.견적+c.계약,p[0]),'b p bd');fill()});
+  R();blank();add('영남영업본부','b c sum');[T.n,T.s,T.v,T.q,T.c,T.am].forEach(x=>add(x,'b n sum'));[T.cv,T.cq,T.cc,T.cam].forEach((x,i)=>add(x,'b n sum rb'+(i===0?' rl':i===3?' rr':'')));add(rateOf(T.cv+T.cq+T.cc,T.n),'b p sum');fill();
   G.sumEnd=G.length;
   R();blank();add('※ 2차 타겟업체 : 영남본부 676업체 파렛트 사용확인 결과 KPP 계약 사용중인 업체와 계약불가(종료, 미사용 등) 업체를 제외한 추가 영업 가능업체를 2차 타겟으로 설정.','txt');fill();
   R();fill();
@@ -450,7 +450,7 @@ async function copy(html,text){
   try{await navigator.clipboard.writeText(text);return true}catch(e){}
   try{const ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.left='-9999px';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();return ok}catch(e){return false}
 }
-async function farmCopy(which){if(!out){alert('먼저 자동 작성을 실행하세요');return}const F=buildGrid();const G=which==='sum'?subGrid(F,F.sumStart,F.sumStart+REG.length,6,10):subGrid(F,F.majStart,F.majEnd);
+async function farmCopy(which){if(!out){alert('먼저 자동 작성을 실행하세요');return}const F=buildGrid();const G=which==='sum'?subGrid(F,F.sumStart,F.sumStart+REG.length,4,8):subGrid(F,F.majStart,F.majEnd);
   const ok=await copy(fullHtml(G),gridToTsv(G));document.getElementById('stat').textContent=ok?(which==='sum'?'주간 실적(방문~예상매출, 권역 3행)':'주요업체')+' 복사됨 ('+G.length+'행) → 엑셀에서 선택한 셀에 붙여넣기':'복사 실패: 미리보기를 드래그해서 복사하세요'}
 document.getElementById('copyTsv').onclick=()=>farmCopy('maj');
 document.getElementById('copyNew').onclick=async()=>{if(!out){alert('먼저 자동 작성을 실행하세요');return}const F=buildGrid();const G=subGrid(F,F.newStart,F.newEnd);const ok=await copy(fullHtml(G),gridToTsv(G));document.getElementById('stat').textContent=ok?'신규업체 현황 표 복사됨 ('+G.length+'행) → 엑셀에서 제목 칸(B열)을 선택하고 붙여넣기':'복사 실패: 미리보기를 드래그해서 복사하세요'};
